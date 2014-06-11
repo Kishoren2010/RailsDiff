@@ -1,7 +1,10 @@
-# encoding: utf-8
+$:.unshift 'lib'
 
-$:.unshift 'lib/rails_diff'
-require 'diff_splitter'
+require 'rails_diff/diff_renderer'
+require 'rails_diff/diff_splitter'
+require 'rails_diff/full_diff_renderer'
+require 'rails_diff/template_renderer'
+
 require 'pygments.rb'
 require 'sass'
 require 'haml'
@@ -153,13 +156,9 @@ rule(/diff\/.*\/full\.diff/ => [->(t) { t.gsub('/full.diff', '') }]) do |t|
 end
 
 # Turn diff into HTML
-rule(/diff\/[^\/]+\/[^\/]+\/index\.html/ => [->(t) { t.gsub('index.html', 'patch.diff') }, 'templates/layout.haml', 'templates/diff.haml']) do |t|
+rule(RailsDiff::DiffRenderer.task_definition) do |t|
   puts 'Generating: %s' % t.name
-
-  diff = File.read t.source
-  diffs = RailsDiff::DiffSplitter.new(diff).split
-
-  render(t.name, t.sources.last, diffs: diffs, title: page_title(t.name))
+  RailsDiff::DiffRenderer.from_task(t).generate(template_renderer: template_renderer)
 end
 
 rule(/diff\/[^\/]+\/[^\/]+\/full$/) do |t|
@@ -167,13 +166,9 @@ rule(/diff\/[^\/]+\/[^\/]+\/full$/) do |t|
 end
 
 # Turn full file diff into HTML
-rule(/diff\/[^\/]+\/[^\/]+\/full\/index\.html/ => [->(t) { t.gsub('full/index.html', 'full.diff') }, ->(t) { t.gsub('/index.html', '') }, 'templates/layout.haml', 'templates/full_diff.haml']) do |t|
+rule(RailsDiff::FullDiffRenderer.task_definition) do |t|
   puts 'Generating: %s' % t.name
-
-  diff = File.read t.source
-  diffs = RailsDiff::DiffSplitter.new(diff).split
-
-  render(t.name, t.sources.last, diffs: diffs, title: page_title(t.name))
+  RailsDiff::FullDiffRenderer.from_task(t).generate(template_renderer: template_renderer)
 end
 
 rule(/html\/.*\.html/) do |t|
@@ -207,6 +202,10 @@ end
 def page_title file_path
   versions = file_path.split('/')[1..2]
   'Rails %s - %s diff' % versions
+end
+
+def template_renderer
+  @template_renderer ||= TemplateRenderer.new
 end
 
 def render file_name, template_name, locals = {}
