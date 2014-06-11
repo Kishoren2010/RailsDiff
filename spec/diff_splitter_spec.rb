@@ -1,5 +1,3 @@
-# encoding: utf-8
-
 require 'diff_splitter'
 
 describe RailsDiff::DiffSplitter do
@@ -32,11 +30,11 @@ END
   describe '#split' do
     subject { diff_splitter.split }
 
-    specify { should be_kind_of(Hash) }
-    specify { subject.keys.should =~ %w[Gemfile config/routes.rb] }
+    it { should be_kind_of(Hash) }
+    it { expect(subject.keys).to match %w[Gemfile config/routes.rb] }
 
-    it 'starts each diff with @' do
-      subject.values.each { |diff| diff =~ /^@/ }
+    it 'strips leading metadata' do
+      subject.values.each { |diff| expect(diff).to match /\A@/ }
     end
   end
 end
